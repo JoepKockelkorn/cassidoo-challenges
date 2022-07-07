@@ -1,3 +1,7 @@
+import lodash from 'lodash';
+import 'lodash.combinations';
+const { combinations, groupBy, last, uniqBy } = lodash;
+
 /**
  * The game Rummikub has 106 tiles: 8 sets numbered 1-13, colored red, blue, black, and yellow, and two (2) “wildcard” tiles.
 
@@ -10,6 +14,7 @@
 
 type Color = 'red' | 'blue' | 'black' | 'yellow';
 const colors: Color[] = ['red', 'blue', 'black', 'yellow'];
+
 class NormalTile {
 	constructor(public color: Color, public number: number) {}
 }
@@ -20,7 +25,7 @@ type TileSet = Tile[];
 const numbers = new Array(13).fill(null).map((_value, index) => index + 1);
 console.assert(numbers.length === 13, 'numbers 1 through 13');
 console.assert(numbers[0] === 1, 'first is 1');
-console.assert(numbers[numbers.length - 1] === 13, 'last is 13');
+console.assert(last(numbers) === 13, 'last is 13');
 
 function getUniqueTiles() {
 	return [
@@ -50,10 +55,43 @@ for (let i = 0; i < 100; i++) {
 }
 
 function getSetsFromTray(tray: Tile[]): TileSet[] {
-	// TODO: determine 'number' sets
 	// TODO: determine 'color' sets
-	return [];
+	const normalTiles = tray.filter((tile) => !(tile instanceof WildcardTile)) as NormalTile[];
+	const wildCardTiles = tray.filter((tile) => tile instanceof WildcardTile) as WildcardTile[];
+	const groupedByNumber = groupBy(normalTiles, 'number') as Partial<Record<number, Tile[]>>;
+	const colorSets = Object.values(groupedByNumber).reduce<TileSet[]>((acc, tiles) => {
+		const uniqueTiles = uniqBy(tiles, 'color');
+		const tilesToCombine = [...uniqueTiles, ...wildCardTiles];
+		if (tilesToCombine.length <= 2) {
+			return acc;
+		}
+		const combinationsWithThree = combinations(tilesToCombine, 3);
+		const combinationsWithFour = combinations(tilesToCombine, 4);
+
+		return [...acc, ...combinationsWithThree, ...combinationsWithFour];
+	}, []);
+
+	// TODO: determine 'number' sets
+	return colorSets;
 }
+const tray: Tile[] = [
+	new NormalTile('black', 1),
+	new NormalTile('blue', 1),
+	new NormalTile('red', 1),
+	new NormalTile('yellow', 1),
+	new NormalTile('black', 2),
+	new NormalTile('blue', 2),
+	new NormalTile('red', 2),
+	new NormalTile('black', 3),
+	new NormalTile('blue', 3),
+	new NormalTile('blue', 4),
+];
+console.log(getSetsFromTray(tray));
+console.log('---------');
+console.log(getSetsFromTray([...tray, new WildcardTile()]));
+console.log('---------');
+console.log(getSetsFromTray([...tray, new WildcardTile(), new WildcardTile()]));
+
 // TODO: assert sets are correct (how?)
 
 function generateRandomNumbers() {
