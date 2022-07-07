@@ -85,7 +85,7 @@ for (let i = 0; i < interations; i++) {
 	logTray(tray);
 	const sets = getSetsFromTray(tray);
 	logSets(sets);
-	if (i < interations) {
+	if (i < interations - 1) {
 		console.log('\n---------\n');
 	}
 	// TODO: assert sets are correct (how?)
