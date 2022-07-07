@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"description": "Solutions for challenges in the newsletter of cassidoo",
 	"scripts": {
-		"start": "concurrently -n tsc,nodemon \"npx tsc --watch\" \"npx nodemon ./dist/index.js -w ./dist\""
+		"start": "concurrently -n tsc,nodemon \"npx tsc --watch\" \"npx nodemon ./dist/index.js -w ./dist\" --hide tsc --raw"
 	},
 	"author": "Joep Kockelkorn",
 	"license": "MIT",
