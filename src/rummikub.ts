@@ -1,6 +1,7 @@
 import lodash from 'lodash';
 import 'lodash.combinations';
-const { combinations, groupBy, last, uniqBy } = lodash;
+const { combinations, groupBy, last, uniqBy, sortBy } = lodash;
+import chalk from 'chalk';
 
 /**
  * The game Rummikub has 106 tiles: 8 sets numbered 1-13, colored red, blue, black, and yellow, and two (2) “wildcard” tiles.
@@ -12,13 +13,16 @@ const { combinations, groupBy, last, uniqBy } = lodash;
     A set can be either 3 or 4 tiles of the same number (but all different colors), or it can be a “run” (which is three or more consecutive numbers all in the same color). The rules for Rummikub are here if you need more clarification!
  */
 
+type Joker = '☺︎' | '☻';
 type Color = 'red' | 'blue' | 'black' | 'yellow';
 const colors: Color[] = ['red', 'blue', 'black', 'yellow'];
 
 class NormalTile {
 	constructor(public color: Color, public number: number) {}
 }
-class WildcardTile {}
+class WildcardTile {
+	constructor(public joker: Joker = '☻') {}
+}
 type Tile = WildcardTile | NormalTile;
 type TileSet = Tile[];
 
@@ -27,13 +31,13 @@ console.assert(numbers.length === 13, 'numbers 1 through 13');
 console.assert(numbers[0] === 1, 'first is 1');
 console.assert(last(numbers) === 13, 'last is 13');
 
-function getUniqueTiles() {
+function getUniqueTiles(joker: Joker) {
 	return [
 		...colors.reduce<NormalTile[]>((acc, color) => acc.concat(numbers.map((number) => new NormalTile(color, number))), []),
-		new WildcardTile(),
+		new WildcardTile(joker),
 	];
 }
-const allTiles = [...getUniqueTiles(), ...getUniqueTiles()];
+const allTiles = [...getUniqueTiles('☺︎'), ...getUniqueTiles('☻')];
 console.assert(allTiles.length === 106, '106 tiles in total');
 
 function generateTray(): Tile[] {
@@ -74,25 +78,38 @@ function getSetsFromTray(tray: Tile[]): TileSet[] {
 	// TODO: determine 'number' sets
 	return colorSets;
 }
-const tray: Tile[] = [
-	new NormalTile('black', 1),
-	new NormalTile('blue', 1),
-	new NormalTile('red', 1),
-	new NormalTile('yellow', 1),
-	new NormalTile('black', 2),
-	new NormalTile('blue', 2),
-	new NormalTile('red', 2),
-	new NormalTile('black', 3),
-	new NormalTile('blue', 3),
-	new NormalTile('blue', 4),
-];
-console.log(getSetsFromTray(tray));
-console.log('---------');
-console.log(getSetsFromTray([...tray, new WildcardTile()]));
-console.log('---------');
-console.log(getSetsFromTray([...tray, new WildcardTile(), new WildcardTile()]));
 
-// TODO: assert sets are correct (how?)
+const interations = 5;
+for (let i = 0; i < interations; i++) {
+	const tray = generateTray();
+	logTray(tray);
+	const sets = getSetsFromTray(tray);
+	logSets(sets);
+	if (i < interations) {
+		console.log('\n---------\n');
+	}
+	// TODO: assert sets are correct (how?)
+}
+
+function logTray(tray: Tile[]) {
+	console.log(`Tray:`);
+	const sortedByNumber = sortBy(tray, (t) => (t instanceof WildcardTile ? 0 : t.number));
+	// console.log(sortedByNumber.map(prettifyTile).join(' '), `(sort by ${chalk.underline('number')})`);
+	const sortedByColor = sortBy(sortedByNumber, (t) => (t instanceof WildcardTile ? 0 : colors.indexOf(t.color)));
+	console.log(sortedByColor.map(prettifyTile).join(' '), `(sort by ${chalk.underline('color')} then ${chalk.underline('number')})`);
+}
+
+function logSets(sets: TileSet[]) {
+	const tiles = sets.map((set) => set.map(prettifyTile).join(' '));
+	if (sets.length) console.log(`Sets:\n${tiles.join('\n')}`);
+	else console.log('Sets: -');
+}
+
+function prettifyTile(tile: Tile): string {
+	return tile instanceof WildcardTile
+		? chalk.bgWhite.underline.black(`  ${tile.joker} `)
+		: chalk.bgWhite[tile.color].bold.underline(` ${tile.number <= 9 ? ' ' : ''}${tile.number} `);
+}
 
 function generateRandomNumbers() {
 	const results: number[] = [];
