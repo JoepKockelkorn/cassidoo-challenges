@@ -13,19 +13,19 @@ const { maxBy, combinations, groupBy, last, uniqBy, sortBy, padStart } = lodash;
     A set can be either 3 or 4 tiles of the same number (but all different colors), or it can be a “run” (which is three or more consecutive numbers all in the same color). The rules for Rummikub are here if you need more clarification!
  */
 
-type Joker = '☺︎' | '☻';
-const colors = ['red', 'cyan', 'black', 'yellow'] as const;
-type Color = typeof colors[number];
+export type Joker = '☺︎' | '☻';
+export const colors = ['red', 'cyan', 'black', 'yellow'] as const;
+export type Color = typeof colors[number];
 
-class NormalTile {
+export class NormalTile {
 	constructor(public color: Color, public number: number) {}
 }
-class WildcardTile {
+export class WildcardTile {
 	constructor(public joker: Joker = '☻') {}
 }
-type Tile = WildcardTile | NormalTile;
-type TileSet = Tile[];
-interface Sets {
+export type Tile = WildcardTile | NormalTile;
+export type TileSet = Tile[];
+export interface Sets {
 	groups: TileSet[];
 	runs: TileSet[];
 }
@@ -44,26 +44,14 @@ function getUniqueTiles(joker: Joker) {
 const allTiles = [...getUniqueTiles('☺︎'), ...getUniqueTiles('☻')];
 console.assert(allTiles.length === 106, '106 tiles in total');
 
-function generateTray(playerAmount = 4 | 5 | 6): TileSet {
+export function generateTray(playerAmount = 4 | 5 | 6): TileSet {
 	if (playerAmount === 5 || playerAmount === 6) throw new Error('Only 4 players currently supported');
 	const randomTileIndexes = generateRandomNumbers();
 
 	return randomTileIndexes.map((index) => allTiles[index]); // FIXME: if more than one player needs a tray, this needs to keep track of the tiles that have already been dealt
 }
 
-// assert 100 trays are unique
-for (let i = 0; i < 100; i++) {
-	const tray = generateTray();
-	const tilesWithDuplicates = tray.filter((tile: Tile, index: number): boolean => {
-		const otherTiles = tray.filter((_otherTile, otherIndex) => otherIndex !== index);
-		return otherTiles.some((otherTile) => otherTile === tile);
-	});
-
-	console.assert(tray.length === 14, 'should be 14 tiles');
-	console.assert(tilesWithDuplicates.length === 0, 'should be no duplicate tiles', tilesWithDuplicates);
-}
-
-function getSetsFromTray(tray: TileSet): Sets {
+export function getSetsFromTray(tray: TileSet): Sets {
 	const normalTiles = tray.filter((tile) => !(tile instanceof WildcardTile)) as NormalTile[];
 	const wildcardTiles = tray.filter((tile) => tile instanceof WildcardTile) as WildcardTile[];
 	const groups = getGroups(normalTiles, wildcardTiles);
@@ -71,34 +59,6 @@ function getSetsFromTray(tray: TileSet): Sets {
 
 	return { groups, runs };
 }
-
-const iterations = 100;
-for (let i = 0; i < iterations; i++) {
-	const tray = generateTray();
-	logTray(tray);
-	const sets = getSetsFromTray(tray);
-	logSets(sets);
-	if (i < iterations - 1) {
-		console.log('\n---------\n');
-	}
-	// TODO: assert sets are correct (how?)
-}
-
-const tray = [
-	// new NormalTile('black', 1),
-	// new NormalTile('black', 2),
-	new NormalTile('black', 3),
-	// new NormalTile('black', 4),
-	// new NormalTile('black', 6),
-	// new NormalTile('black', 7),
-	// new NormalTile('black', 12),
-	// new NormalTile('black', 13),
-	new WildcardTile('☺︎'),
-	new WildcardTile('☻'),
-];
-logTray(tray);
-const sets = getSetsFromTray(tray);
-logSets(sets);
 
 function getRuns(normalTiles: NormalTile[], wildcardTiles: WildcardTile[]) {
 	const groupedByColor = groupBy(normalTiles, 'color');
@@ -168,7 +128,7 @@ function getGroups(normalTiles: NormalTile[], wildcardTiles: WildcardTile[]) {
 	}, []);
 }
 
-function logTray(tray: TileSet) {
+export function logTray(tray: TileSet) {
 	console.log(`Tray:`);
 	const sortedByNumber = sortBy(tray, (t) => (t instanceof WildcardTile ? 0 : t.number));
 	// console.log(sortedByNumber.map(prettifyTile).join(' '), `(sort by ${chalk.underline('number')})`);
@@ -176,7 +136,7 @@ function logTray(tray: TileSet) {
 	console.log(formatSet(sortedByColor), `(sort by ${chalk.underline('color')} then ${chalk.underline('number')})`);
 }
 
-function logSets({ groups, runs }: Sets) {
+export function logSets({ groups, runs }: Sets) {
 	const groupTiles = groups.map(formatSet);
 	const runTiles = runs.map(formatSet);
 	if (groupTiles.length) console.log(`Groups (${groupTiles.length}):\n${groupTiles.join('\n')}`);
