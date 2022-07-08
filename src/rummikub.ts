@@ -1,7 +1,7 @@
-import lodash, { reduce } from 'lodash';
+import chalk from 'chalk';
+import lodash from 'lodash';
 import 'lodash.combinations';
 const { maxBy, combinations, groupBy, last, uniqBy, sortBy, padStart } = lodash;
-import chalk from 'chalk';
 
 /**
  * The game Rummikub has 106 tiles: 8 sets numbered 1-13, colored red, blue, black, and yellow, and two (2) “wildcard” tiles.
@@ -14,8 +14,8 @@ import chalk from 'chalk';
  */
 
 type Joker = '☺︎' | '☻';
-type Color = 'red' | 'blue' | 'black' | 'yellow';
-const colors: Color[] = ['red', 'blue', 'black', 'yellow'];
+const colors = ['red', 'cyan', 'black', 'yellow'] as const;
+type Color = typeof colors[number];
 
 class NormalTile {
 	constructor(public color: Color, public number: number) {}
@@ -44,7 +44,7 @@ function getUniqueTiles(joker: Joker) {
 const allTiles = [...getUniqueTiles('☺︎'), ...getUniqueTiles('☻')];
 console.assert(allTiles.length === 106, '106 tiles in total');
 
-function generateTray(playerAmount = 4 | 5 | 6): Tile[] {
+function generateTray(playerAmount = 4 | 5 | 6): TileSet {
 	if (playerAmount === 5 || playerAmount === 6) throw new Error('Only 4 players currently supported');
 	const randomTileIndexes = generateRandomNumbers();
 
@@ -63,7 +63,7 @@ for (let i = 0; i < 100; i++) {
 	console.assert(tilesWithDuplicates.length === 0, 'should be no duplicate tiles', tilesWithDuplicates);
 }
 
-function getSetsFromTray(tray: Tile[]): Sets {
+function getSetsFromTray(tray: TileSet): Sets {
 	const normalTiles = tray.filter((tile) => !(tile instanceof WildcardTile)) as NormalTile[];
 	const wildcardTiles = tray.filter((tile) => tile instanceof WildcardTile) as WildcardTile[];
 	const groups = getGroups(normalTiles, wildcardTiles);
@@ -72,74 +72,67 @@ function getSetsFromTray(tray: Tile[]): Sets {
 	return { groups, runs };
 }
 
-const interations = 10;
-for (let i = 0; i < interations; i++) {
+const iterations = 100;
+for (let i = 0; i < iterations; i++) {
 	const tray = generateTray();
 	logTray(tray);
 	const sets = getSetsFromTray(tray);
 	logSets(sets);
-	if (i < interations - 1) {
+	if (i < iterations - 1) {
 		console.log('\n---------\n');
 	}
 	// TODO: assert sets are correct (how?)
 }
 
-// const tray = [
-// 	new NormalTile('black', 1),
-// 	new NormalTile('black', 2),
-// 	new NormalTile('black', 3),
-// 	new NormalTile('black', 4),
-// 	new NormalTile('black', 6),
-// 	new NormalTile('black', 7),
-// 	new NormalTile('black', 12),
-// 	new NormalTile('black', 13),
-// 	new WildcardTile('☺︎'),
-// 	new WildcardTile('☻'),
-// ];
-// logTray(tray);
-// const sets = getSetsFromTray(tray);
-// logSets(sets);
+const tray = [
+	// new NormalTile('black', 1),
+	// new NormalTile('black', 2),
+	new NormalTile('black', 3),
+	// new NormalTile('black', 4),
+	// new NormalTile('black', 6),
+	// new NormalTile('black', 7),
+	// new NormalTile('black', 12),
+	// new NormalTile('black', 13),
+	new WildcardTile('☺︎'),
+	new WildcardTile('☻'),
+];
+logTray(tray);
+const sets = getSetsFromTray(tray);
+logSets(sets);
 
 function getRuns(normalTiles: NormalTile[], wildcardTiles: WildcardTile[]) {
 	const groupedByColor = groupBy(normalTiles, 'color');
-	return uniqBy(
-		Object.values(groupedByColor).reduce<TileSet[]>((acc, curr) => [...acc, ...getRunsOfColor(curr, wildcardTiles)], []),
-		(val) => val.map((v) => JSON.stringify(v)).join('')
-	);
+	return Object.values(groupedByColor).reduce<TileSet[]>((acc, curr) => [...acc, ...getRunsOfColor(curr, wildcardTiles)], []);
 }
 
 function getRunsOfColor(normalTiles: NormalTile[], wildcardTiles: WildcardTile[]) {
-	// sequences can only be between 1 and 13 (both included)
-	const totalTiles = normalTiles.length + wildcardTiles.length;
-	const startingTilesPerNumber = numbers
-		.filter((num) => num < 12 && num <= totalTiles - 2) // a sequence can never start with a 12 or 13 and when the total tiles is lower than 13 it makes no sense to start at total - 2 because a sequence must be 3 long
-		.reduce<Partial<Record<number, Tile[]>>>(
-			(acc, number) => ({ ...acc, [number]: [...normalTiles.filter((tile) => tile.number >= number), ...wildcardTiles] }),
-			{}
-		);
-
-	const numbersWithStartingTiles = Object.entries(startingTilesPerNumber).filter(([_num, tiles]) => (tiles ?? []).length > 0);
-	return numbersWithStartingTiles
-		.reduce<TileSet[]>(
-			(acc, [number, tiles]) => [
-				...acc,
-				...tiles!.flatMap((tile) => getSequencesOfRun([tile], Number(number), normalTiles, wildcardTiles)),
-			],
-			[]
-		)
-		.filter((set) => set.length >= 3);
+	const sortedNormalTiles = uniqBy(sortBy(normalTiles, 'number'), 'number');
+	const totalTiles = sortedNormalTiles.length + wildcardTiles.length;
+	// a sequence can never start with a 12 or 13, and
+	// when there are only 3 tiles (1, 2, 3) than it makes no sense to start with anything higher than 1
+	const startingNormalTiles = sortedNormalTiles.filter((tile) => tile.number <= 11 && sortedNormalTiles.indexOf(tile) < totalTiles - 2);
+	const startingTiles = [...startingNormalTiles, ...wildcardTiles];
+	const completedRuns = startingTiles.flatMap((tile) => getSequencesOfRun([tile], sortedNormalTiles, wildcardTiles));
+	const validRunsByLength = completedRuns.filter((set) => set.length >= 3);
+	return uniqBy(validRunsByLength, hashSet); // filter out the duplicate runs (i.e. 1 2 3) when a player has a 1, a 2 and two 3s
 }
 
-function getSequencesOfRun(run: TileSet, currentNumber: number, normalTiles: NormalTile[], wildcardTiles: WildcardTile[]): TileSet[] {
+function hashSet(set: TileSet): string {
+	return set.map((tile) => (isNormalTile(tile) ? `${tile.color}${tile.number}` : tile.joker)).join(', ');
+}
+
+function getSequencesOfRun(run: TileSet, normalTiles: NormalTile[], wildcardTiles: WildcardTile[]): TileSet[] {
 	function getNextTilesForRun(currentRun: TileSet) {
-		const lastTile = currentRun[currentRun.length - 1];
 		const highestNormalTile = maxBy(currentRun.filter(isNormalTile), (t) => t.number);
 		const indexOfHighestNormalTile = highestNormalTile ? currentRun.indexOf(highestNormalTile) : -1;
 		const remainingTiles = currentRun.slice(indexOfHighestNormalTile + 1);
-		const amountOfWildcardTilesAfterNormalTiles = highestNormalTile === undefined ? 0 : remainingTiles.filter(isWildcardTile).length;
-		const currentHighestNumber = highestNormalTile ? highestNormalTile?.number + amountOfWildcardTilesAfterNormalTiles : 0;
+		const wildcardTilesAfterNormalTiles = highestNormalTile === undefined ? [] : remainingTiles.filter(isWildcardTile);
+		const currentHighestNumber = highestNormalTile
+			? highestNormalTile?.number + wildcardTilesAfterNormalTiles.length
+			: currentRun.filter(isWildcardTile).length;
 		if (highestNormalTile?.number === 13 || currentRun.length >= 13) return [];
 
+		// FIXME: why is [☻ 3 ☺︎] not an outcome?
 		const nextNormalTiles = normalTiles.filter((t) => currentHighestNumber === 0 || t.number === currentHighestNumber + 1);
 		const nextWildcardTiles = wildcardTiles.filter((t) => !currentRun.includes(t));
 
@@ -149,10 +142,7 @@ function getSequencesOfRun(run: TileSet, currentNumber: number, normalTiles: Nor
 	const nextTiles = getNextTilesForRun(run);
 	const newRuns = nextTiles.map((tile) => [...run, tile]);
 
-	return newRuns.reduce<TileSet[]>(
-		(acc, curr) => [...acc, ...getSequencesOfRun(curr, currentNumber + 1, normalTiles, wildcardTiles)],
-		newRuns
-	);
+	return newRuns.reduce<TileSet[]>((acc, curr) => [...acc, ...getSequencesOfRun(curr, normalTiles, wildcardTiles)], newRuns);
 }
 
 function isNormalTile(t: Tile): t is NormalTile {
@@ -178,20 +168,24 @@ function getGroups(normalTiles: NormalTile[], wildcardTiles: WildcardTile[]) {
 	}, []);
 }
 
-function logTray(tray: Tile[]) {
+function logTray(tray: TileSet) {
 	console.log(`Tray:`);
 	const sortedByNumber = sortBy(tray, (t) => (t instanceof WildcardTile ? 0 : t.number));
 	// console.log(sortedByNumber.map(prettifyTile).join(' '), `(sort by ${chalk.underline('number')})`);
 	const sortedByColor = sortBy(sortedByNumber, (t) => (t instanceof WildcardTile ? 0 : colors.indexOf(t.color)));
-	console.log(sortedByColor.map(prettifyTile).join(' '), `(sort by ${chalk.underline('color')} then ${chalk.underline('number')})`);
+	console.log(formatSet(sortedByColor), `(sort by ${chalk.underline('color')} then ${chalk.underline('number')})`);
 }
 
 function logSets({ groups, runs }: Sets) {
-	const groupTiles = groups.map((set) => set.map(prettifyTile).join(' '));
-	const runTiles = runs.map((set) => set.map(prettifyTile).join(' '));
+	const groupTiles = groups.map(formatSet);
+	const runTiles = runs.map(formatSet);
 	if (groupTiles.length) console.log(`Groups (${groupTiles.length}):\n${groupTiles.join('\n')}`);
 	if (runTiles.length) console.log(`Runs (${runTiles.length}):\n${runTiles.join('\n')}`);
 	if (groupTiles.length === 0 && runTiles.length === 0) console.log('No sets found 😭');
+}
+
+function formatSet(set: TileSet) {
+	return set.map(prettifyTile).join(' ');
 }
 
 function prettifyTile(tile: Tile): string {
