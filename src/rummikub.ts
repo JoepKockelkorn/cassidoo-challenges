@@ -19,9 +19,15 @@ export type Color = typeof colors[number];
 
 export class NormalTile {
 	constructor(public color: Color, public number: number) {}
+	toString() {
+		return chalk.bgWhite[this.color].bold.underline(` ${padStart(`${this.number}`, 2, ' ')} `);
+	}
 }
 export class WildcardTile {
 	constructor(public joker: Joker = '☻') {}
+	toString() {
+		return chalk.bgWhite.underline.black(`  ${this.joker} `);
+	}
 }
 export type Tile = WildcardTile | NormalTile;
 export type TileSet = Tile[];
@@ -83,6 +89,7 @@ function hashSet(set: TileSet): string {
 
 function getSequencesOfRun(run: TileSet, normalTiles: NormalTile[], wildcardTiles: WildcardTile[]): TileSet[] {
 	function getNextTilesForRun(currentRun: TileSet) {
+		const lastTile = currentRun[currentRun.length - 1];
 		const highestNormalTile = maxBy(currentRun.filter(isNormalTile), (t) => t.number);
 		const indexOfHighestNormalTile = highestNormalTile ? currentRun.indexOf(highestNormalTile) : -1;
 		const remainingTiles = currentRun.slice(indexOfHighestNormalTile + 1);
@@ -92,8 +99,12 @@ function getSequencesOfRun(run: TileSet, normalTiles: NormalTile[], wildcardTile
 			: currentRun.filter(isWildcardTile).length;
 		if (highestNormalTile?.number === 13 || currentRun.length >= 13) return [];
 
-		// FIXME: why is [☻ 3 ☺︎] not an outcome?
-		const nextNormalTiles = normalTiles.filter((t) => currentHighestNumber === 0 || t.number === currentHighestNumber + 1);
+		const nextNormalTiles = normalTiles.filter(
+			(t) =>
+				currentHighestNumber === 0 ||
+				(lastTile === highestNormalTile && t.number === currentHighestNumber + 1) ||
+				(highestNormalTile === undefined && t.number > currentHighestNumber)
+		);
 		const nextWildcardTiles = wildcardTiles.filter((t) => !currentRun.includes(t));
 
 		return [...nextNormalTiles, ...nextWildcardTiles];
@@ -105,11 +116,11 @@ function getSequencesOfRun(run: TileSet, normalTiles: NormalTile[], wildcardTile
 	return newRuns.reduce<TileSet[]>((acc, curr) => [...acc, ...getSequencesOfRun(curr, normalTiles, wildcardTiles)], newRuns);
 }
 
-function isNormalTile(t: Tile): t is NormalTile {
+export function isNormalTile(t: Tile): t is NormalTile {
 	return t instanceof NormalTile;
 }
 
-function isWildcardTile(t: Tile): t is WildcardTile {
+export function isWildcardTile(t: Tile): t is WildcardTile {
 	return t instanceof WildcardTile;
 }
 
@@ -131,7 +142,7 @@ function getGroups(normalTiles: NormalTile[], wildcardTiles: WildcardTile[]) {
 export function logTray(tray: TileSet) {
 	console.log(`Tray:`);
 	const sortedByNumber = sortBy(tray, (t) => (t instanceof WildcardTile ? 0 : t.number));
-	// console.log(sortedByNumber.map(prettifyTile).join(' '), `(sort by ${chalk.underline('number')})`);
+	// console.log(formatSet(sortedByNumber), `(sort by ${chalk.underline('number')})`);
 	const sortedByColor = sortBy(sortedByNumber, (t) => (t instanceof WildcardTile ? 0 : colors.indexOf(t.color)));
 	console.log(formatSet(sortedByColor), `(sort by ${chalk.underline('color')} then ${chalk.underline('number')})`);
 }
@@ -145,13 +156,7 @@ export function logSets({ groups, runs }: Sets) {
 }
 
 function formatSet(set: TileSet) {
-	return set.map(prettifyTile).join(' ');
-}
-
-function prettifyTile(tile: Tile): string {
-	return tile instanceof WildcardTile
-		? chalk.bgWhite.underline.black(`  ${tile.joker} `)
-		: chalk.bgWhite[tile.color].bold.underline(` ${padStart(`${tile.number}`, 2, ' ')} `);
+	return set.join(' ');
 }
 
 function generateRandomNumbers() {
@@ -174,3 +179,8 @@ function getRandomTileIndex() {
 function randomInteger(min: number, max: number) {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+// const tray = generateTray();
+// logTray(tray);
+// const sets = getSetsFromTray(tray);
+// logSets(sets);
