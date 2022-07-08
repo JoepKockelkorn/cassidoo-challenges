@@ -4,6 +4,7 @@
 	"version": "1.0.0",
 	"description": "Solutions for challenges in the newsletter of cassidoo",
 	"scripts": {
+		"build": "tsc",
 		"test": "jest --passWithNoTests",
 		"test:watch": "jest --passWithNoTests --watch"
 	},
