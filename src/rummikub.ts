@@ -17,6 +17,13 @@ export type Joker = '☺︎' | '☻';
 export const colors = ['red', 'cyan', 'black', 'yellow'] as const;
 export type Color = typeof colors[number];
 
+// EXPERIMENTAL TYPES
+// export type RummiNum = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '12' | '13';
+// type FlatTile = `${Color}|${RummiNum}` | Joker;
+// const cyanOne: FlatTile = 'cyan|1';
+// const joker: FlatTile = '☺︎';
+// const test: FlatTile  = '';
+
 export class NormalTile {
 	constructor(public color: Color, public number: number) {}
 	toString() {
